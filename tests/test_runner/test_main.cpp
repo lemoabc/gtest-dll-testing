@@ -85,36 +85,54 @@ void PrintHelp() {
               << "================\n\n"
               << "Command Line Options:\n"
               << "------------------\n"
-              << "  --help                 Show this help message\n"
-              << "  --list                 List all available tests\n"
-              << "  --run <test_name>      Run a specific test case\n"
-              << "  --run-module <module>  Run all tests in a specific module\n"
-              << "  --run-all             Run all available tests\n\n"
+              << "1. Default Mode:\n"
+              << "   test_runner.exe                       Run all tests\n\n"
+              << "2. Google Test Native Options:\n"
+              << "   --gtest_filter=TestSuite.TestCase     Run specific test\n"
+              << "   --gtest_list_tests                    List all tests\n"
+              << "   --gtest_repeat=N                      Repeat tests N times\n"
+              << "   --gtest_output=xml:report.xml        Generate XML report\n"
+              << "   --gtest_break_on_failure             Break on failure\n"
+              << "   --gtest_catch_exceptions             Handle exceptions\n\n"
+              << "3. Custom Options:\n"
+              << "   --help                               Show this help message\n"
+              << "   --list                               List all available tests\n"
+              << "   --run <test_name>                    Run a specific test case\n"
+              << "   --run-module <module>                Run all tests in a module\n\n"
               << "Examples:\n"
               << "--------\n"
-              << "1. Show all available tests:\n"
-              << "   test_runner.exe --list\n\n"
-              << "2. Run a specific test:\n"
+              << "1. Run all tests:\n"
+              << "   test_runner.exe\n\n"
+              << "2. Run specific test with native option:\n"
+              << "   test_runner.exe --gtest_filter=ModuleATest.AddTest\n\n"
+              << "3. Run specific test with custom option:\n"
               << "   test_runner.exe --run ModuleATest.AddTest\n\n"
-              << "3. Run all tests in ModuleA:\n"
+              << "4. Run all tests in ModuleA:\n"
               << "   test_runner.exe --run-module ModuleATest\n\n"
-              << "4. Run all tests:\n"
-              << "   test_runner.exe --run-all\n\n"
+              << "5. Run tests with multiple options:\n"
+              << "   test_runner.exe --run ModuleATest.AddTest --gtest_repeat=3\n\n"
               << "Notes:\n"
               << "-----\n"
               << "- Test names are case-sensitive\n"
-              << "- Use --list to see the exact names of available tests\n"
-              << "- Module names should be specified without the .dll extension\n";
+              << "- Native and custom options can be mixed\n"
+              << "- Use --list or --gtest_list_tests to see available tests\n"
+              << "- Module names should be specified without the .dll extension\n"
+              << "- For more GTest options, visit: https://google.github.io/googletest/\n";
 }
 
 void PrintUsage() {
     std::cout << "Usage:\n"
-              << "  test_runner.exe --help                  Show help information\n"
-              << "  test_runner.exe --list                  List all available tests\n"
-              << "  test_runner.exe --run <test_name>       Run a specific test\n"
-              << "  test_runner.exe --run-module <module>   Run all tests in specified module\n"
-              << "  test_runner.exe --run-all              Run all tests\n\n"
-              << "For more detailed information, use: test_runner.exe --help\n";
+              << "1. Default Mode:\n"
+              << "   test_runner.exe                       Run all tests\n\n"
+              << "2. Google Test Native Options:\n"
+              << "   --gtest_filter=<test_pattern>         Run specific test\n"
+              << "   --gtest_list_tests                    List all tests\n\n"
+              << "3. Custom Options:\n"
+              << "   --help                               Show help message\n"
+              << "   --list                               List available tests\n"
+              << "   --run <test_name>                    Run specific test\n"
+              << "   --run-module <module>                Run module tests\n\n"
+              << "For more detailed information and examples, use: test_runner.exe --help\n";
 }
 
 int main(int argc, char** argv) {
@@ -124,69 +142,59 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // if no command line arguments, run GTest
-    if (argc < 2) {
-        testing::InitGoogleTest(&argc, argv);
-        return RUN_ALL_TESTS();
-    }
-
-    std::string command = argv[1];
-    
-    // Check for help command first
-    if (command == "--help") {
-        PrintHelp();
-        return 0;
-    }
-
-    // Prepare command line arguments for GTest
-    std::vector<char*> new_argv;
-    new_argv.push_back(argv[0]);  // Program name
-
-    // Handle test filter for specific test
-    if ((command == "--run" && argc > 2) || (command == "--run-module" && argc > 2)) {
-        std::string filter_arg_str;
-        if (command == "--run") {
-        std::string test_name = argv[2];
-        std::cout << "Running test: " << test_name << std::endl;
-            filter_arg_str = "--gtest_filter=" + test_name;
-        } else {
-            std::string module_name = argv[2];
-            std::cout << "Running all tests in module: " << module_name << std::endl;
-            filter_arg_str = "--gtest_filter=" + module_name + ".*";
+    // Check for custom commands
+    if (argc >= 2) {
+        std::string command = argv[1];
+        
+        // Handle custom commands
+        if (command == "--help") {
+            PrintHelp();
+            return 0;
         }
         
-        char* filter_arg = new char[filter_arg_str.length() + 1];
-        std::strcpy(filter_arg, filter_arg_str.c_str());
-        new_argv.push_back(filter_arg);
+        if (command == "--list") {
+            TestLoader::ListTests();
+            return 0;
+        }
+        
+        if ((command == "--run" && argc > 2) || (command == "--run-module" && argc > 2)) {
+            // Prepare GTest arguments
+            std::vector<char*> new_argv;
+            new_argv.push_back(argv[0]);  // Program name
+
+            std::string filter_arg_str;
+            if (command == "--run") {
+                std::string test_name = argv[2];
+                std::cout << "Running test: " << test_name << std::endl;
+                filter_arg_str = "--gtest_filter=" + test_name;
+            } else {
+                std::string module_name = argv[2];
+                std::cout << "Running all tests in module: " << module_name << std::endl;
+                filter_arg_str = "--gtest_filter=" + module_name + ".*";
+            }
+            
+            char* filter_arg = new char[filter_arg_str.length() + 1];
+            std::strcpy(filter_arg, filter_arg_str.c_str());
+            new_argv.push_back(filter_arg);
+
+            // Initialize GTest with modified arguments
+            int new_argc = static_cast<int>(new_argv.size());
+            testing::InitGoogleTest(&new_argc, new_argv.data());
+            
+            int result = RUN_ALL_TESTS();
+            
+            // Cleanup
+            delete[] filter_arg;
+            TestLoader::UnloadTestDlls();
+            return result;
+        }
     }
 
-    // Initialize GTest with modified arguments
-    int new_argc = static_cast<int>(new_argv.size());
-    testing::InitGoogleTest(&new_argc, new_argv.data());
-
-    int result = 0;
-
-    if (command == "--list") {
-        TestLoader::ListTests();
-    }
-    else if ((command == "--run" && argc > 2) || (command == "--run-module" && argc > 2)) {
-        result = RUN_ALL_TESTS();
-    }
-    else if (command == "--run-all") {
-        result = RUN_ALL_TESTS();
-    }
-    else if (command != "--help") {  // Don't show usage if help was requested
-        PrintUsage();
-        result = 1;
-    }
+    // Default behavior: Initialize and run tests with original arguments
+    testing::InitGoogleTest(&argc, argv);
+    int result = RUN_ALL_TESTS();
     
-    // Clean up dynamically allocated memory
-    if ((command == "--run" && argc > 2) || (command == "--run-module" && argc > 2)) {
-        delete[] new_argv[1];
-    }
-
-    // Clean up
+    // Cleanup
     TestLoader::UnloadTestDlls();
-    
     return result;
 }
